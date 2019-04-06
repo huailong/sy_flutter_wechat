@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
 
+import com.tencent.mm.opensdk.modelmsg.SendAuth;
 import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
 import com.tencent.mm.opensdk.modelmsg.WXImageObject;
 import com.tencent.mm.opensdk.modelmsg.WXMediaMessage;
@@ -20,6 +21,8 @@ import com.tencent.mm.opensdk.openapi.WXAPIFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -38,6 +41,8 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
   private static Result result;
   private static final int THUMB_SIZE = 150;
 
+  public static final String loginFilterName = "wxAuthCallback";
+
 
   //微信支付回调
   private static BroadcastReceiver wxpayCallbackReceiver = new BroadcastReceiver() {
@@ -49,12 +54,38 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
     }
   };
 
+  //微信授权
+  private static BroadcastReceiver wxAuthCallbackReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      if(intent != null){
+        boolean isSuccess = intent.getBooleanExtra("isSuccess", false);
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("isSuccess", isSuccess);
+        if(isSuccess){
+          String openid = intent.getStringExtra("openId");
+          String nickname = intent.getStringExtra("nickName");
+          String headImgUrl = intent.getStringExtra("headImgUrl");
+          String accessToken = intent.getStringExtra("accessToken");
+          paramMap.put("openId", openid);
+          paramMap.put("nickName", nickname);
+          paramMap.put("headImgUrl", headImgUrl);
+          paramMap.put("accessToken", accessToken);
+          result.success(paramMap);
+        }else{
+          result.success(paramMap);
+        }
+      }
+    }
+  };
+
   /** Plugin registration. */
   public static void registerWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "sy_flutter_wechat");
     final SyFlutterWechatPlugin plugin = new SyFlutterWechatPlugin(registrar);
     channel.setMethodCallHandler(plugin);
     registrar.context().registerReceiver(wxpayCallbackReceiver,new IntentFilter(filterName));
+    registrar.context().registerReceiver(wxAuthCallbackReceiver, new IntentFilter(loginFilterName));
   }
 
   private SyFlutterWechatPlugin(Registrar registrar){
@@ -84,6 +115,9 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
       case "pay":
         this.pay(call);
         break;
+      case "auth":
+        this.wxAuth();
+        break;
       default:
         result.notImplemented();
         break;
@@ -93,9 +127,11 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
   //注册微信app id
   private void registerToWX(MethodCall call, Result result){
     String appId = call.argument("appId");
+    String secret = call.argument("secret");
     wxApi = WXAPIFactory.createWXAPI(registrar.context(),appId);
     boolean res =wxApi.registerApp(appId);
     StateManager.setApi(wxApi);
+    StateManager.setParam(appId, secret);
     result.success(res);
   }
 
@@ -122,28 +158,28 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
     final String imageUrl = call.argument("imageUrl");
     final String shareType = call.argument("shareType");
     new Thread(new Runnable() {
-        WXMediaMessage msg = new WXMediaMessage();
-        @Override
-        public void run() {
-          try {
-            Bitmap bmp = BitmapFactory.decodeStream(new URL(imageUrl).openStream());
-            WXImageObject imageObject = new WXImageObject(bmp);
-            Bitmap thumbBmp = Bitmap.createScaledBitmap(bmp, THUMB_SIZE, THUMB_SIZE, true);
+      WXMediaMessage msg = new WXMediaMessage();
+      @Override
+      public void run() {
+        try {
+          Bitmap bmp = BitmapFactory.decodeStream(new URL(imageUrl).openStream());
+          WXImageObject imageObject = new WXImageObject(bmp);
+          Bitmap thumbBmp = Bitmap.createScaledBitmap(bmp, THUMB_SIZE, THUMB_SIZE, true);
 
-            msg.mediaObject = imageObject;
-            bmp.recycle();
-            msg.thumbData = SyFlutterWechatPlugin.bmpToByteArray(thumbBmp, true);
-          }catch (IOException e){
-            e.printStackTrace();
-          }
-
-          SendMessageToWX.Req req = new SendMessageToWX.Req();
-          req.scene = _convertShareType(shareType);
-          req.message = msg;
-          boolean res = wxApi.sendReq(req);
-          result.success(res);
+          msg.mediaObject = imageObject;
+          bmp.recycle();
+          msg.thumbData = SyFlutterWechatPlugin.bmpToByteArray(thumbBmp, true);
+        }catch (IOException e){
+          e.printStackTrace();
         }
+
+        SendMessageToWX.Req req = new SendMessageToWX.Req();
+        req.scene = _convertShareType(shareType);
+        req.message = msg;
+        boolean res = wxApi.sendReq(req);
+        result.success(res);
       }
+    }
     ).start();
   }
 
@@ -225,4 +261,11 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
     return result;
   }
 
+  //微信登录
+  private void wxAuth(){
+    SendAuth.Req req = new SendAuth.Req();
+    req.scope = "snsapi_userinfo";
+    req.state = "none";
+    wxApi.sendReq(req);
+  }
 }

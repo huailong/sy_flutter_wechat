@@ -30,12 +30,12 @@ enum SyPayResult {
 /// wechat class
 class SyFlutterWechat {
   static const MethodChannel _channel =
-      const MethodChannel('sy_flutter_wechat');
+  const MethodChannel('sy_flutter_wechat');
 
   /// register app id
-  static Future<bool> register(String appId) async {
+  static Future<bool> register(String appId, String secret) async {
     return await _channel
-        .invokeMethod('register', <String, dynamic>{'appId': appId});
+        .invokeMethod('register', <String, dynamic>{'appId': appId, 'secret': secret});
   }
 
   /// shareText
@@ -80,6 +80,11 @@ class SyFlutterWechat {
       'sign': payInfo.sign,
     });
     return _convertPayResult(payResult);
+  }
+
+  /// auth
+  static Future<Map<dynamic, dynamic>> auth() async{
+    return await _channel.invokeMethod("auth");
   }
 
   static String _shareTypeToStr(SyShareType shareType) {

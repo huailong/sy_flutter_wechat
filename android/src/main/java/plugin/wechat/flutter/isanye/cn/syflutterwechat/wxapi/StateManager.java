@@ -6,6 +6,8 @@ import com.tencent.mm.opensdk.openapi.IWXAPI;
 public class StateManager {
 
     private static IWXAPI wxapi = null;
+    public static String wxAppId = "";
+    public static String wxSecret = "";
 
     public static void setApi(IWXAPI wxapi){
         StateManager.wxapi = wxapi;
@@ -13,5 +15,10 @@ public class StateManager {
 
     public static IWXAPI getAPi(){
         return StateManager.wxapi;
+    }
+
+    public static void setParam(String appId, String secret){
+        wxAppId = appId;
+        wxSecret = secret;
     }
 }

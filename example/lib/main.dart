@@ -18,7 +18,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   _register() async {
-    bool result = await SyFlutterWechat.register('wxf9909bde17439ac2');
+    bool result = await SyFlutterWechat.register('wxf9909bde17439ac2', '');
     print(result);
   }
 
