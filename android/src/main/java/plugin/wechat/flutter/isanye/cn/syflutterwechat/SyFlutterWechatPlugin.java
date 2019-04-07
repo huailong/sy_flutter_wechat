@@ -67,10 +67,12 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
           String nickname = intent.getStringExtra("nickName");
           String headImgUrl = intent.getStringExtra("headImgUrl");
           String accessToken = intent.getStringExtra("accessToken");
+          String sex = intent.getStringExtra("sex");
           paramMap.put("openId", openid);
           paramMap.put("nickName", nickname);
           paramMap.put("headImgUrl", headImgUrl);
           paramMap.put("accessToken", accessToken);
+          paramMap.put("sex", sex);
           result.success(paramMap);
         }else{
           result.success(paramMap);

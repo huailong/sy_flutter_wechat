@@ -87,7 +87,7 @@ public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
                         String get_user_info_url = getUserInfoUrl(access_token, openid);
                         getUserInfo(get_user_info_url, access_token);
                     }else{
-                        sendResult(false,"" , "", "", "");
+                        sendResult(false,"" , "", "", "", "");
                     }
 
                 } catch (Exception e) {
@@ -109,10 +109,11 @@ public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
                         String openid = response.getString("openid");
                         String nickname = response.getString("nickname");
                         String headImgUrl = response.getString("headimgurl");
+                        String sex = response.getString("sex");
 
-                        sendResult(true, openid, nickname, headImgUrl, accessToken);
+                        sendResult(true, openid, nickname, headImgUrl, accessToken, sex);
                     }else{
-                        sendResult(false, "", "", "", "");
+                        sendResult(false, "", "", "", "", "");
                     }
 
                 } catch (Exception e) {
@@ -122,7 +123,7 @@ public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
         });
     }
 
-    private void sendResult(boolean isSuccess, String openId, String nickName, String headImgUrl, String accessToken){
+    private void sendResult(boolean isSuccess, String openId, String nickName, String headImgUrl, String accessToken, String sex){
         Intent i = new Intent(SyFlutterWechatPlugin.loginFilterName);
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         i.putExtra("isSuccess", isSuccess);
@@ -130,6 +131,7 @@ public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
         i.putExtra("nickName", nickName);
         i.putExtra("headImgUrl", headImgUrl);
         i.putExtra("accessToken", accessToken);
+        i.putExtra("sex", sex);
         WXEntryActivity.this.sendBroadcast(i);
     }
 
