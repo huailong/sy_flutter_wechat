@@ -69,7 +69,7 @@ class SyFlutterWechat {
   }
 
   /// pay
-  static Future<SyPayResult> pay(SyPayInfo payInfo) async {
+  static Future<SyPayResult> pay(SyPayInfo payInfo,Function callback(int reuslt)) async {
     int payResult = await _channel.invokeMethod('pay', <String, dynamic>{
       'appid': payInfo.appid,
       'partnerid': payInfo.partnerid,
@@ -79,6 +79,10 @@ class SyFlutterWechat {
       'timestamp': payInfo.timestamp,
       'sign': payInfo.sign,
     });
+
+    if(callback != null){
+      callback(payResult);
+    }
     return _convertPayResult(payResult);
   }
 

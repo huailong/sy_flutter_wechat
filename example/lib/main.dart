@@ -67,7 +67,9 @@ class _MyAppState extends State<MyApp> {
                 String payInfo =
                     '{"appid":"wxf9909bde17439ac2","partnerid":"1518469211","prepayid":"wx120649521695951d501636f91748325073","package":"Sign=WXPay","noncestr":"1541976592","timestamp":"1541976592","sign":"E760C99A1A981B9A7D8F17B08EF60FCC"}';
                 SyPayResult payResult = await SyFlutterWechat.pay(
-                    SyPayInfo.fromJson(json.decode(payInfo)));
+                    SyPayInfo.fromJson(json.decode(payInfo)), (result) {
+
+                });
                 print(payResult);
               },
             ),
