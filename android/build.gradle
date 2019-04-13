@@ -35,5 +35,6 @@ android {
 }
 dependencies {
     api 'com.tencent.mm.opensdk:wechat-sdk-android-without-mta:+'
-    implementation 'com.loopj.android:android-async-http:1.4.9'
+    api 'com.loopj.android:android-async-http:1.4.9'
+    api project(':common')
 }
