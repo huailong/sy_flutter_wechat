@@ -1,17 +1,8 @@
 package plugin.wechat.flutter.isanye.cn.syflutterwechat;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.util.Log;
+import com.maikg.city.wxapi.WXManager;
 
-import com.maikg.city.social.wxapi.WXManager;
-import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
-import com.tencent.mm.opensdk.openapi.IWXAPI;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.json.JSONObject;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -24,57 +15,7 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
  */
 public class SyFlutterWechatPlugin implements MethodCallHandler {
 
-    private static final String TAG = "SyFlutterWechatPlugin>>";
-    public static final String filterName = "wxCallback";
-    private IWXAPI wxApi;
     private Registrar registrar;
-    private static Result result;
-    private static final int THUMB_SIZE = 150;
-
-    public static final String loginFilterName = "wxAuthCallback1";
-
-
-    //微信支付回调
-    private static BroadcastReceiver wxpayCallbackReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (result == null || intent == null) {
-                return;
-            }
-            Integer errCode = intent.getIntExtra("errCode", -3);
-            Log.e(TAG, errCode.toString());
-            result.success(errCode);
-        }
-    };
-
-    //微信授权
-    private static BroadcastReceiver wxAuthCallbackReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (result == null || intent == null) {
-                return;
-            }
-
-            boolean isSuccess = intent.getBooleanExtra("isSuccess", false);
-            Map<String, Object> paramMap = new HashMap<>();
-            paramMap.put("isSuccess", isSuccess);
-            if (isSuccess) {
-                String openid = intent.getStringExtra("openId");
-                String nickname = intent.getStringExtra("nickName");
-                String headImgUrl = intent.getStringExtra("headImgUrl");
-                String accessToken = intent.getStringExtra("accessToken");
-                String sex = intent.getStringExtra("sex");
-                paramMap.put("openId", openid);
-                paramMap.put("nickName", nickname);
-                paramMap.put("headImgUrl", headImgUrl);
-                paramMap.put("accessToken", accessToken);
-                paramMap.put("sex", sex);
-                result.success(paramMap);
-            } else {
-                result.success(paramMap);
-            }
-        }
-    };
 
     /**
      * Plugin registration.
@@ -83,8 +24,6 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "sy_flutter_wechat");
         final SyFlutterWechatPlugin plugin = new SyFlutterWechatPlugin(registrar);
         channel.setMethodCallHandler(plugin);
-        registrar.context().registerReceiver(wxpayCallbackReceiver, new IntentFilter(filterName));
-        registrar.context().registerReceiver(wxAuthCallbackReceiver, new IntentFilter(loginFilterName));
 
         WXManager.getInstance().init(registrar.context());
     }
@@ -96,7 +35,7 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        SyFlutterWechatPlugin.result = null;
+
         switch (call.method) {
             case "getPlatformVersion":
                 result.success("Android " + android.os.Build.VERSION.RELEASE);
@@ -114,12 +53,10 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
                 this.shareWebPage(call, result);
                 break;
             case "pay":
-                SyFlutterWechatPlugin.result = result;
-                this.pay(call);
+                this.pay(call, result);
                 break;
             case "auth":
-                SyFlutterWechatPlugin.result = result;
-                this.wxAuth();
+                this.wxAuth(result);
                 break;
             default:
                 result.notImplemented();
@@ -132,7 +69,7 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
         String appId = call.argument("appId");
         String secret = call.argument("secret");
 
-        wxApi = WXManager.getInstance().register(registrar.context(), appId, secret, new WXManager.ResultCallback() {
+        WXManager.getInstance().register(registrar.context(), appId, secret, new WXManager.ResultCallback() {
             @Override
             public void onHandle(boolean success) {
                 result.success(success);
@@ -140,53 +77,28 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
         });
     }
 
-    private void shareText(MethodCall call, Result result) {
-//        String text = call.argument("text");
-//        String shareType = call.argument("shareType");
-//
-//        WXTextObject textObj = new WXTextObject();
-//        textObj.text = text;
-//
-//        WXMediaMessage msg = new WXMediaMessage();
-//        msg.mediaObject = textObj;
-//        msg.description = text;
-//
-//        SendMessageToWX.Req req = new SendMessageToWX.Req();
-//        req.scene = _convertShareType(shareType);
-//        req.message = msg;
-//        //req.transaction = buildTransaction("");
-//        boolean res = wxApi.sendReq(req);
-//        result.success(res);
+    private void shareText(MethodCall call, final Result result) {
+        String text = call.argument("text");
+        String shareType = call.argument("shareType");
+
+        WXManager.getInstance().shareText(text, shareType, new WXManager.ResultCallback() {
+            @Override
+            public void onHandle(boolean res) {
+                result.success(res);
+            }
+        });
     }
 
     private void shareImage(final MethodCall call, final Result result) {
-//        final String imageUrl = call.argument("imageUrl");
-//        final String shareType = call.argument("shareType");
-//        new Thread(new Runnable() {
-//            WXMediaMessage msg = new WXMediaMessage();
-//
-//            @Override
-//            public void run() {
-//                try {
-//                    Bitmap bmp = BitmapFactory.decodeStream(new URL(imageUrl).openStream());
-//                    WXImageObject imageObject = new WXImageObject(bmp);
-//                    Bitmap thumbBmp = Bitmap.createScaledBitmap(bmp, THUMB_SIZE, THUMB_SIZE, true);
-//
-//                    msg.mediaObject = imageObject;
-//                    bmp.recycle();
-//                    msg.thumbData = SyFlutterWechatPlugin.bmpToByteArray(thumbBmp, true);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                SendMessageToWX.Req req = new SendMessageToWX.Req();
-//                req.scene = _convertShareType(shareType);
-//                req.message = msg;
-//                boolean res = wxApi.sendReq(req);
-//                result.success(res);
-//            }
-//        }
-//        ).start();
+        final String imageUrl = call.argument("imageUrl");
+        final String shareType = call.argument("shareType");
+
+        WXManager.getInstance().shareImage(imageUrl, shareType, new WXManager.ResultCallback() {
+            @Override
+            public void onHandle(boolean res) {
+                result.success(res);
+            }
+        });
     }
 
     private void shareWebPage(final MethodCall call, final Result result) {
@@ -196,7 +108,7 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
         String webPageUrl = call.argument("webPageUrl");
         String shareType = call.argument("shareType");
 
-        WXManager.getInstance().shareWebPage(title, description, imageUrl, webPageUrl, _convertShareType(shareType), new WXManager.ResultCallback() {
+        WXManager.getInstance().shareWebPage(title, description, imageUrl, webPageUrl, shareType, new WXManager.ResultCallback() {
             @Override
             public void onHandle(boolean success) {
                 result.success(success);
@@ -205,37 +117,30 @@ public class SyFlutterWechatPlugin implements MethodCallHandler {
     }
 
     //调起微信支付
-    private void pay(MethodCall call) {
-//        PayReq req = new PayReq();
-//        req.appId = call.argument("appid");
-//        req.partnerId = call.argument("partnerid");
-//        req.prepayId = call.argument("prepayid");
-//        req.packageValue = call.argument("package");
-//        req.nonceStr = call.argument("noncestr");
-//        req.timeStamp = call.argument("timestamp");
-//        req.sign = call.argument("sign");
-//        wxApi.sendReq(req);
-    }
-
-
-    private static int _convertShareType(String shareType) {
-        switch (shareType) {
-            case "session":
-                return SendMessageToWX.Req.WXSceneSession;
-            case "timeline":
-                return SendMessageToWX.Req.WXSceneTimeline;
-            case "favorite":
-                return SendMessageToWX.Req.WXSceneFavorite;
-            default:
-                return SendMessageToWX.Req.WXSceneSession;
-        }
+    private void pay(MethodCall call, final Result result) {
+        String appId = call.argument("appid");
+        String partnerId = call.argument("partnerid");
+        String prepayId = call.argument("prepayid");
+        String packageValue = call.argument("package");
+        String nonceStr = call.argument("noncestr");
+        String timeStamp = call.argument("timestamp");
+        String sign = call.argument("sign");
+        
+        WXManager.getInstance().pay(appId, partnerId, prepayId, packageValue, nonceStr, timeStamp, sign, new WXManager.DataCallback<Integer>() {
+            @Override
+            public void onGet(Integer data) {
+                result.success(data);
+            }
+        });
     }
 
     //微信登录
-    private void wxAuth() {
-//        SendAuth.Req req = new SendAuth.Req();
-//        req.scope = "snsapi_userinfo";
-//        req.state = "none";
-//        wxApi.sendReq(req);
+    private void wxAuth(final Result result) {
+        WXManager.getInstance().auth(new WXManager.DataCallback<JSONObject>() {
+            @Override
+            public void onGet(JSONObject data) {
+                result.success(data);
+            }
+        });
     }
 }
